@@ -7,7 +7,7 @@ import OpenGL.GL as gl
 import OpenGL.GLUT as glut
 from vispy.gloo import Program, VertexBuffer, IndexBuffer
 from vispy.gloo.context import FakeCanvas
-from transforms import perspective, translate, rotate
+from transforms import perspective, translate, rotate, ortho
 import ilio
 
 c = FakeCanvas()
@@ -20,6 +20,8 @@ def display():
     gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT |
                gl.GL_STENCIL_BUFFER_BIT)
 
+    gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
+
     # Filled cube
     # gl.glDisable(gl.GL_BLEND)
     # gl.glEnable(gl.GL_DEPTH_TEST)
@@ -31,6 +33,8 @@ def display():
     gl.glEnable(gl.GL_STENCIL_TEST)
     gl.glStencilFunc(gl.GL_ALWAYS, 1, 255)
     gl.glStencilOp(gl.GL_KEEP, gl.GL_KEEP, gl.GL_REPLACE)
+    # gl.glStencilFunc(gl.GL_NEVER, 1, 255)
+    # gl.glStencilOp(gl.GL_REPLACE, gl.GL_REPLACE, gl.GL_REPLACE)
     gl.glStencilMask(255)
     gl.glDepthMask(gl.GL_FALSE)
     program2['u_color'] = 1,1,1,1
@@ -38,6 +42,7 @@ def display():
     program2.draw(gl.GL_TRIANGLE_STRIP)
 
     gl.glStencilFunc(gl.GL_EQUAL, 1, 255);
+    #gl.glStencilOp(gl.GL_KEEP, gl.GL_KEEP, gl.GL_REPLACE)
     gl.glStencilMask(0)
     gl.glDepthMask(gl.GL_TRUE)
 
@@ -49,6 +54,10 @@ def display():
     program['u_scale'] = 1,-1,1
     program.draw(gl.GL_TRIANGLES, indices)
     gl.glDisable(gl.GL_STENCIL_TEST)
+
+    gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, fbo)
+    shadowProgram.draw(gl.GL_TRIANGLES, indices)
+    gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 
     # Outlined cube
     # gl.glDisable(gl.GL_POLYGON_OFFSET_FILL)
@@ -130,6 +139,27 @@ program2 = Program(vertex, ilio.read('black.frag'), count=4)
 program2['model'] = model
 program2['view'] = view
 program2["position"] = [[-2,-1, 2],[-2, -1, -2], [2, -1, 2], [2,-1, -2]]
+
+depthv = ilio.read('depth.vert')
+depthf = ilio.read('depth.frag')
+shadowProgram = Program(depthv, depthf)
+# shadowProgram.set_shaders(ilio.read('depth.vert'), ilio.read('depth.frag'))
+shadowProgram['projection'] = ortho(-10, 10, -10, 10, -10, 20)
+#shadowProgram["position"] = [[-2,-1, 2],[-2, -1, -2], [2, -1, 2], [2,-1, -2]]
+shadowProgram.bind(vertices)
+
+fbo = gl.glGenFramebuffers(1)
+gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, fbo)
+fbt = gl.glGenTextures(1)
+gl.glBindTexture(gl.GL_TEXTURE_2D, fbt)
+gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
+gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
+gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
+gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_DEPTH_COMPONENT16, 1024, 1024, 0, gl.GL_DEPTH_COMPONENT, gl.GL_FLOAT, None)
+gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_TEXTURE_2D, fbt, 0)
+gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+#gl.glDrawBuffer(gl.GL_NONE)
 
 # OpenGL initalization
 # --------------------------------------
