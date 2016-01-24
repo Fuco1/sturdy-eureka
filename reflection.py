@@ -20,6 +20,8 @@ def display():
     gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT |
                gl.GL_STENCIL_BUFFER_BIT)
 
+    gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, fbo)
+    shadowProgram.draw(gl.GL_TRIANGLES, indices)
     gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 
     # Filled cube
@@ -28,6 +30,7 @@ def display():
     # gl.glEnable(gl.GL_POLYGON_OFFSET_FILL)
     program['u_color'] = 1,1,1,1
     program['u_scale'] = 1,1,1
+    program['draw_shadow'] = 1
     program.draw(gl.GL_TRIANGLES, indices)
 
     gl.glEnable(gl.GL_STENCIL_TEST)
@@ -52,12 +55,9 @@ def display():
     program['model'] = model
     program['u_color'] = 0.5, 0.5, 0.5, 1
     program['u_scale'] = 1,-1,1
+    program['draw_shadow'] = 0
     program.draw(gl.GL_TRIANGLES, indices)
     gl.glDisable(gl.GL_STENCIL_TEST)
-
-    gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, fbo)
-    shadowProgram.draw(gl.GL_TRIANGLES, indices)
-    gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 
     # Outlined cube
     # gl.glDisable(gl.GL_POLYGON_OFFSET_FILL)
@@ -133,6 +133,7 @@ model = np.eye(4,dtype=np.float32)
 projection = np.eye(4,dtype=np.float32)
 program['model'] = model
 program['view'] = view
+program['o_projection'] = ortho(-10, 10, -10, 10, -10, 20)
 phi, theta = 0,0
 
 program2 = Program(vertex, ilio.read('black.frag'), count=4)
@@ -151,6 +152,7 @@ shadowProgram.bind(vertices)
 fbo = gl.glGenFramebuffers(1)
 gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, fbo)
 fbt = gl.glGenTextures(1)
+gl.glActiveTexture(gl.GL_TEXTURE0)
 gl.glBindTexture(gl.GL_TEXTURE_2D, fbt)
 gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
 gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
@@ -158,6 +160,7 @@ gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
 gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
 gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_DEPTH_COMPONENT16, 1024, 1024, 0, gl.GL_DEPTH_COMPONENT, gl.GL_FLOAT, None)
 gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_TEXTURE_2D, fbt, 0)
+program['shadow_map'] = 0;
 gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 #gl.glDrawBuffer(gl.GL_NONE)
 
